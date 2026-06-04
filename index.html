@@ -415,14 +415,17 @@
             <div class="grid grid-cols-1 gap-1.5">
               <div v-for="(lug, lIdx) in filteredLuggage(cat)" :key="lIdx" class="flex items-center justify-between bg-white px-3 py-2 rounded-xl text-xs shadow-2xs border border-amber-100">
                 <div class="flex items-center gap-2">
-                  <input type="checkbox" v-model="lug.checked" class="rounded text-amber-500 focus:ring-0 w-4 h-4">
+                  <!-- 修正：加上 @change="saveLocal()"，勾選或取消勾選時就會自動離線同步 -->
+                  <input type="checkbox" v-model="lug.checked" @change="saveLocal()" class="rounded text-amber-500 focus:ring-0 w-4 h-4">
                   <span :class="{'line-through text-gray-400 font-normal': lug.checked, 'font-bold text-gray-700': !lug.checked}">{{ lug.name }}</span>
                 </div>
                 <div class="flex items-center gap-3">
                   <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-100 rounded-lg px-1">
-                    <button @click="lug.qty > 1 ? lug.qty-- : null" class="text-gray-400 font-bold px-1 text-sm">-</button>
+                    <!-- 修正：點擊減號時，如果大於 1 則減 1 並立刻觸發 saveLocal() -->
+                    <button @click="if(lug.qty > 1) { lug.qty--; saveLocal(); }" class="text-gray-400 font-bold px-1 text-sm">-</button>
                     <span class="font-bold text-gray-600 min-w-[12px] text-center">{{ lug.qty }}</span>
-                    <button @click="lug.qty++" class="text-gray-400 font-bold px-1 text-sm">+</button>
+                    <!-- 修正：點擊加號時，數量加 1 並立刻觸發 saveLocal() -->
+                    <button @click="lug.qty++; saveLocal();" class="text-gray-400 font-bold px-1 text-sm">+</button>
                   </div>
                   <button @click="deleteLuggageItem(lug.id)" class="text-gray-300 hover:text-red-500"><i class="fa-solid fa-trash-can text-[11px]"></i></button>
                 </div>
