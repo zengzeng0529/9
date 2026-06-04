@@ -128,135 +128,15 @@
           
           <div v-for="(item, idx) in filteredSchedules" :key="item.id" :data-id="item.id" class="relative group">
             
-           區塊 -->
-<div v-if="idx > 0" class="my-2 ml-8 flex items-center gap-2 text-xs font-semibold text-teal-600 bg-teal-50 w-max px-3 py-1 rounded-full border border-teal-100 shadow-2xs">
-  
-  <span @click="cycleTransMode(item)" class="cursor-pointer select-none flex items-center gap-1">
-    <template v-if="item.currentMode === 'DRIVING'">
-      <i class="fa-solid fa-car"></i> 開車
-    </template>
-    <template v-else-if="item.currentMode === 'WALKING'">
-      <i class="fa-solid fa-walking"></i> 走路
-    </template>
-    <template v-else>
-      <i class="fa-solid fa-bus"></i> 大眾運輸
-    </template>
-    
-    <span class="text-teal-700 font-bold ml-0.5">
-      {{ getDurationText(item) }}
-    </span>
-  </span>
-
-  <button @click.stop="calculateSingleRoute(idx)" class="text-teal-400 hover:text-teal-600 ml-1 flex items-center" title="重新計算此段時間">
-    <i class="fa-solid fa-rotate text-[10px]"></i>
-  </button>
-
-  <a v-if="itinerary && itinerary[idx-1]" 
-     :href="'https://map.kakao.com/?sName=' + encodeURIComponent(itinerary[idx-1].address || itinerary[idx-1].name) + '&eName=' + encodeURIComponent(item.address || item.name)" 
-     target="_blank" 
-     @click.stop
-     class="text-teal-500 hover:text-teal-700 ml-1 pl-1 border-l border-teal-200" 
-     title="打開本地地圖導航">
-    <i class="fa-solid fa-location-arrow text-[10px]"></i>
-  </a>
-</div>
-<script>
-// 💡 請將以下函式複製到妳 Vue 的 methods: { ... } 物件內
-methods: {
-  // 循環切換交通模式
-  cycleTransMode(item) {
-    const modes = ['TRANSIT', 'DRIVING', 'WALKING'];
-    let nextIdx = modes.indexOf(item.currentMode || 'TRANSIT') + 1;
-    if (nextIdx >= modes.length) nextIdx = 0;
-    
-    item.currentMode = modes[nextIdx];
-    if (item.durationMatrix && item.durationMatrix[item.currentMode]) {
-      item.transTime = item.durationMatrix[item.currentMode].replace(/[^0-9]/g, '');
-    }
-    if (typeof this.saveLocal === 'function') this.saveLocal();
-  },
-
-  // 獲取當前模式對應的導航時間文字
-  getDurationText(item) {
-    if (!item.durationMatrix) {
-      return item.transTime ? `${item.transTime} 分鐘` : '計算中...';
-    }
-    const mode = item.currentMode || 'TRANSIT';
-    return item.durationMatrix[mode] || '無資料';
-  },
-
-  // 自動計算「前一個地址」到「目前地址」的時間 (呼叫 Google Maps API)
-  async calculateSingleRoute(currentIdx) {
-    if (typeof google === 'undefined' || !google.maps) return;
-
-    const items = this.itinerary || []; // ⚠️ 若行程變數名稱不同（如 days[currentDay].items）請在此處修改
-    if (currentIdx <= 0 || currentIdx >= items.length) return;
-
-    const prevItem = items[currentIdx - 1];
-    const currentItem = items[currentIdx];
-    const origin = prevItem.address || prevItem.name;
-    const destination = currentItem.address || currentItem.name;
-
-    if (!origin || !destination) return;
-
-    if (!currentItem.durationMatrix) {
-      this.$set(currentItem, 'durationMatrix', { DRIVING: '...', TRANSIT: '...', WALKING: '...' });
-    }
-    if (!currentItem.currentMode) {
-      this.$set(currentItem, 'currentMode', 'TRANSIT');
-    }
-
-    const service = new google.maps.DistanceMatrixService();
-    const modes = ['DRIVING', 'TRANSIT', 'WALKING'];
-
-    modes.forEach(mode => {
-      service.getDistanceMatrix({
-        origins: [origin],
-        destinations: [destination],
-        travelMode: google.maps.TravelMode[mode],
-      }, (response, status) => {
-        if (status === 'OK' && response.rows[0].elements[0].status === 'OK') {
-          const rawText = response.rows[0].elements[0].duration.text;
-          const chineseText = rawText
-            .replace('mins', '分鐘').replace('min', '分鐘')
-            .replace('hours', '小時').replace('hour', '小時');
-
-          currentItem.durationMatrix[mode] = chineseText;
-
-          if (mode === currentItem.currentMode) {
-            currentItem.transTime = chineseText.replace(/[^0-9]/g, '');
-          }
-          if (typeof this.saveLocal === 'function') this.saveLocal();
-        } else {
-          // 韓國特殊提醒：開車與走路常受地圖限制回傳失敗，顯示受限；大眾運輸則多能正常計算
-          currentItem.durationMatrix[mode] = mode === 'TRANSIT' ? '無法計算' : '受限';
-        }
-      });
-    });
-  },
-
-  // 一鍵計算整天所有行程時間
-  calculateAllRoutes() {
-    const items = this.itinerary || [];
-    for (let i = 1; i < items.length; i++) {
-      this.calculateSingleRoute(i);
-    }
-  }
-},
-
-// 💡 請將以下監聽器複製到妳 Vue 的 watch: { ... } 物件內，讓行程排序變動時會自動重算時間
-watch: {
-  itinerary: {
-    handler(newVal) {
-      if (newVal && newVal.length > 1) {
-        this.calculateAllRoutes();
-      }
-    },
-    deep: true
-  }
-}
-</script>
-
+            <!-- 交通時間顯示器（如果不是第一個行程） -->
+            <div v-if="idx > 0" class="my-2 ml-8 flex items-center gap-2 text-xs font-semibold text-teal-600 bg-teal-50 w-max px-2 py-1 rounded-full border border-teal-100">
+              <span @click="toggleTransMode(item)">
+                <i v-if="item.transMode === 'drive'" class="fa-solid fa-car"></i>
+                <i v-else-if="item.transMode === 'walk'" class="fa-solid fa-walking"></i>
+                <i v-else class="fa-solid fa-bus"></i>
+                {{ item.transTime || '15' }} 分鐘
+              </span>
+            </div>
 
             <!-- 特別樣式：航班卡片 -->
             <div v-if="item.category === '航班'" class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-dashed border-orange-300 rounded-2xl p-4 shadow-sm relative orange-dot">
